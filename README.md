@@ -13,3 +13,4 @@ Install the software:
 3. Copy all the files to a file directory. 
 4. In ArcGIS, nevigate to the file directory, click the tool. 
 # E-mail: yfkong@henu.edu.cn
+# Sponsored by the National Science Foundation of China (no. 41871307)
