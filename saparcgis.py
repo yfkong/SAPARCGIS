@@ -1,3 +1,4 @@
+### -*- coding: ascii -*-
 # -*- coding: utf-8 -*-
 # an algorithm framework for the service area problem 
 # by Dr. Yunfeng Kong (yfkong@henu.edu.cn), Henan University, China
@@ -9,11 +10,18 @@
 ##noprint "March 31, 2019."
 
 import sys,os,random,time,copy,math,tempfile
-import arcpy
-
+has_arcpy=0
+try:
+    import arcpy
+    has_arcpy=1
+except:
+    has_arcpy=0
+    ##noprint "arcpy unavailable!"
 #mip solver
 mip_solvers=[] #MIP solvers supported 
 mip_solver=''  #MIP solver "cplex", "cbc" or ""
+mip_file_path=tempfile.gettempdir()
+os.chdir(mip_file_path)
 try:
     import cplex
     ##noprint "CPLEX Python API: available!"
@@ -149,7 +157,13 @@ tabuSearch=0  #0 no tabu list, 1 use tabu list
 tabuLength=100
 tabuList=[]
 
-#connective: constraints on spatial contiguity? 1 for yes and 0 for no 
+
+def arcpy_print(s):
+    if has_arcpy==0: 
+        print s
+    else:
+        arcpy.AddMessage(s)
+
 
 #record a region in current solution
 def update_region_pool(rid):
@@ -208,7 +222,6 @@ def check_continuality_feasibility(sol,rid):
     if len(ulist1)==0:          
         return 1  #feasible
     return 0    #infeasible
-
 
 def check_ulist_continuality(ulist):
     if spatial_contiguity==0: return 1
@@ -1010,7 +1023,7 @@ def readfile(f1,f2):
     connectivity=[[0 for x in range(len(nodes))] for y in range(len(nodes))]
     ###id1,id2#####
     f = open(f2)
-    line = f.readline()             # 调用文件的 readline()方法
+    line = f.readline()
     line = f.readline()
     links=0
     while line:
@@ -1112,9 +1125,9 @@ def initialize_instance():
         dis+=d*nodes[i][3]
     avg_dis_min=dis/total_pop
     find_NearFacilityList(NumNearFacility)
-    arcpy.AddMessage("total demand: "+str(total_pop))
-    arcpy.AddMessage("total supply: "+str(sum(x[5] for x in nodes)))
-    arcpy.AddMessage("avg. distance to nearest facility: "+str(avg_dis_min))
+    arcpy_print("total demand: "+str(total_pop))
+    arcpy_print("total supply: "+str(sum(x[5] for x in nodes)))
+    arcpy_print("avg. distance to nearest facility: "+str(avg_dis_min))
     
 #read network distance
 def readdistance(dfile):
@@ -1122,7 +1135,7 @@ def readdistance(dfile):
     nodedij=[[MAXNUMBER for x in range(len(nodes))] for y in range(len(nodes))]
     ##noprint "reading distances ...",
     f = open(dfile)
-    line = f.readline()             # 调用文件的 readline()方法
+    line = f.readline()
     line = f.readline()
     while line:
         items = line.split(',')
@@ -1157,417 +1170,148 @@ def find_NearFacilityList(nnn):
         flist=[x[0] for x in fdlist[0:n]]
         NearFacilityList.append(flist)
 
-##def location_model(numf):
-##    global node_groups
-##    global centersID
-##    global num_districts
-##    global capacities
-##    global district_info
-###    facilityCandidate=[]
-###    facilityCapacity=[]
-###    facilityCost=[]
-##    
-##    prob = pulp.LpProblem("location",pulp.LpMinimize)
-##    xvariables={}
-##    costs={}
-##    alpha_coeff=avg_dis_min*pop_dis_coeff
-##    for i in range(num_units):
-##        for j in facilityCandidate:
-##            xvariables["x_" +str(i)+ "_"+ str(j)]=pulp.LpVariable("x_" +str(i)+ "_"+ str(j), 0, 1, pulp.LpBinary)
-##            costs["x_" +str(i)+ "_"+ str(j)]=nodedij[i][j]*nodes[i][3]*(random.random()+49.5)/50
-##    yvariables={}
-##    for i in facilityCandidate:
-##        yvariables["y_" +str(i)]=pulp.LpVariable("y_" +str(i), 0, 1, pulp.LpBinary)
-##        costs["y_" +str(i)]=nodes[i][7]
-##    obj=""
-##    for x in xvariables:
-##        obj += costs[x]*xvariables[x]
-##    for y in yvariables:
-##        if costs[y]>0:
-##            obj += costs[y]*yvariables[y]
-##    prob +=obj
-##
-####    for k in facilityCandidate:
-####        if nodes[k][6]!=1:
-####            continue
-####        s=xvariables["x_" +str(k)+ "_"+ str(k)]
-####        prob +=s == 1
-##    for k in facilityCandidate:
-##        if nodes[k][6]==1:
-##            s=yvariables["y_" +str(k)]
-##            prob +=s == 1
-##
-##    s=""
-##    for k in facilityCandidate:
-##        s+=yvariables["y_" +str(k)]
-##    prob +=s <= numf
-##
-##    for i in range(num_units):
-##        s=""
-##        for j in facilityCandidate:
-##            s+=xvariables["x_" +str(i)+ "_"+ str(j)]
-##        prob +=s == 1
-##
-##    for k in facilityCandidate:
-##        s=""
-##        for i in range(num_units):
-##            s+=nodes[i][3]*xvariables["x_" +str(i)+ "_"+ str(k)]
-##        s-=nodes[k][5] * yvariables["y_" +str(k)]
-##        prob+=s <= 0
-##        
-##    prob.writeLP("_location.lp")
-##    cbc=pulp.solvers.COIN_CMD(mip=1,msg=1,maxSeconds=10,fracGap = 0.0005)
-##    if mip_solver=='cplex':
-##        cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.0005'])
-##    cbc.actualSolve(prob)
-##
-##    if prob.status<0:
-##        ##noprint "model unsolved..."
-##        return -1
-##    sol=[]
-##    centersID=[]
-##    for v in prob.variables():
-##        if (v.varValue >= 0.90):
-##            ###noprint v,v.varValue
-##            items=v.name.split('_')
-##            i=int(items[1])
-##            if items[0]=='y':
-##                centersID.append(i)
-##                continue
-##            k=int(items[2])
-##            sol.append([i,k])
-##    ###noprint sol
-##    num_districts=len(centersID)
-##    district_info = [[0,0.0,0,0,0] for x in range(num_districts)]
-##    centersID.sort()
-##    node_groups=[-1 for x in range(num_units)]
-##    for i in range(len(sol)):
-##        node_groups[sol[i][0]]=sol[i][1]
-##    for k in range(num_districts):
-##        ck=centersID[k]
-##        for i in range(num_units):
-##            if node_groups[i]==ck:
-##                node_groups[i]=k
-##    capacities=[]
-##    for x in centersID:
-##        capacities.append(nodes[x][5])
-##    return 
 
-def location_model_lp(numf):
-    global node_groups
-    global centersID
-    global num_districts
-    global capacities
-    global district_info
-#    facilityCandidate=[]
-#    facilityCapacity=[]
-#    facilityCost=[]
-    
-    prob = pulp.LpProblem("location",pulp.LpMinimize)
-    xvariables={}
-    costs={}
-    alpha_coeff=avg_dis_min*pop_dis_coeff
-    for i in range(num_units):
-        for j in facilityCandidate:
-            xvariables["x_" +str(i)+ "_"+ str(j)]=pulp.LpVariable("x_" +str(i)+ "_"+ str(j), 0, None, pulp.LpInteger)
-            costs["x_" +str(i)+ "_"+ str(j)]=nodedij[i][j] #*(random.random()+49.5)/50
-    yvariables={}
-    for i in facilityCandidate:
-        yvariables["y_" +str(i)]=pulp.LpVariable("y_" +str(i), 0, 1, pulp.LpBinary)
-        costs["y_" +str(i)]=nodes[i][7]
-    obj=""
-    for x in xvariables:
-        obj += costs[x]*xvariables[x]
-    #for y in yvariables:
-    #    if costs[y]>0:
-    #        obj += costs[y]*yvariables[y]
-    prob +=obj
-
-    for k in facilityCandidate:
-        #if nodes[k][6]!=1:
-        #    continue
-        s=xvariables["x_" +str(k)+ "_"+ str(k)]
-        prob +=s == nodes[k][3]
-
-##    for k in facilityCandidate:
-##        if nodes[k][6]==1:
-##            s=yvariables["y_" +str(k)]
-##            prob +=s == 1
-
-    s=""
-    for k in facilityCandidate:
-        s+=yvariables["y_" +str(k)]
-    prob +=s <= numf
-
-    for i in range(num_units):
-        s=""
-        for j in facilityCandidate:
-            s+=xvariables["x_" +str(i)+ "_"+ str(j)]
-        prob +=s == nodes[i][3]
-
-    for k in facilityCandidate:
-        s=""
-        for i in range(num_units):
-            s+=xvariables["x_" +str(i)+ "_"+ str(k)]
-        s-=nodes[k][5] * yvariables["y_" +str(k)]
-        prob+=s <= 0
-        
-    #prob.writeLP("_location.lp")
-    cbc=pulp.solvers.COIN_CMD(mip=1,msg=1,maxSeconds=10,fracGap = 0.00001)
-    #prob.solve(solver=cbc)
-    if mip_solver=='cplex':
-        cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.00001'])
-    cbc.actualSolve(prob)
-
-    if prob.status<0:
-        ##noprint "model unsolved..."
-        return -1
-    sol=[]
-    centersID=[]
-    for v in prob.variables():
-        if (v.varValue >= 0.90):
-            ###noprint v,v.varValue
-            items=v.name.split('_')
-            i=int(items[1])
-            if items[0]=='y':
-                centersID.append(i)
-                continue
-            k=int(items[2])
-            sol.append([i,k])
-    num_districts=len(centersID)
-    district_info = [[0,0.0,0,0,0] for x in range(num_districts)]
-    centersID.sort()
-    node_groups=[-1 for x in range(num_units)]
-    for i in range(len(sol)):
-        node_groups[sol[i][0]]=sol[i][1]
-    for k in range(num_districts):
-        ck=centersID[k]
-        for i in range(num_units):
-            if node_groups[i]==ck:
-                node_groups[i]=k
-    capacities=[]
-    for x in centersID:
-        capacities.append(nodes[x][5])
-    return pulp.value(prob.objective)
 
 #build and solve a mip model 
-def mipmodel():
-    try:
-        import cplex
-    except:
-        ##noprint "cplex is not supported"
-        pass
-        #return
-    #import cplex
+
+#build and solve a mip model 
+def mipmodel_pulp():
+    if mip_solver not in mip_solvers:
+        return -2
+    if spatial_contiguity!=1:
+        sta=init_sol_model(0)
+        if sta<0:
+            return sta
+        update_district_info()
+        update_best_solution()
+        return sta
     global node_groups
     global centersID
     centers=centersID[:]
     
+    alpha_coeff=avg_dis_min*pop_dis_coeff    
+    prob = pulp.LpProblem("SAP",pulp.LpMinimize)
+    yvariables={}
+    ycosts={}
+    for i in range(num_units):
+        for k in range(num_districts):
+            yvariables["y_" +str(i)+ "_"+ str(k)]=pulp.LpVariable("y_" +str(i)+ "_"+ str(k), 0, None, pulp.LpBinary)
+            ycosts["y_" +str(i)+ "_"+ str(k)]=nodes[i][3]*nodedij[i][centers[k]]
+    hvariables={}
+    for k in range(num_districts):
+        hvariables["H_" + str(k)]=pulp.LpVariable("H_" +str(k), 0, None, pulp.LpInteger)
+    fvariables={}
+    for i in range(num_units):
+        for j in node_neighbors[i]:
+            for k in range(num_districts):
+                fvariables["f_" +str(i)+ "_"+str(j)+ "_"+ str(k)]=pulp.LpVariable("f_" +str(i)+ "_"+ str(j)+ "_"+ str(k), 0, None, pulp.LpInteger)
+    obj=""
+    for x in yvariables:
+        obj += ycosts[x]*yvariables[x]
+    for x in hvariables:
+        obj+=alpha_coeff*hvariables[x]
+    prob +=obj
+
+    for i in range(num_units):
+        s=""
+        for k in range(num_districts):
+            s+=yvariables["y_" +str(i)+ "_"+ str(k)]
+        prob += s==1
+
+    for k in range(num_districts):
+        s=""
+        for i in range(num_units):
+            s+= nodes[i][3] * yvariables["y_" +str(i)+ "_"+ str(k)]
+        s -= hvariables["H_"+str(k)]
+        prob += s <= capacities[k]
+
+    #con 3
+    for i in range(num_units):
+        for j in node_neighbors[i]:
+            for k in range(num_districts):
+                s=fvariables["f_" +str(i)+ "_"+str(j)+ "_"+ str(k)]
+                s-= (num_units-num_districts)* yvariables["y_" +str(i)+ "_"+ str(k)]
+                prob += s <= 0
+    #con 4
+    for i in range(num_units):
+        for j in node_neighbors[i]:
+            for k in range(num_districts):
+                s=fvariables["f_" +str(i)+ "_"+str(j)+ "_"+ str(k)]
+                s-= (num_units-num_districts)* yvariables["y_" +str(j)+ "_"+ str(k)]
+                prob += s <= 0
+    #con 5
+    for i in range(num_units):
+        if i in centersID: continue
+        for k in range(num_districts):
+            s=""
+            for j in node_neighbors[i]:
+                s+=fvariables["f_" +str(i)+ "_"+str(j)+ "_"+ str(k)] - fvariables["f_" +str(j)+ "_"+str(i)+ "_"+ str(k)]
+            s-= yvariables["y_" +str(i)+ "_"+ str(k)]
+            prob += s >= 0
+
+    #con 6
+    for i in centersID:
+        for j in node_neighbors[i]:
+            for k in range(num_districts):
+                s=fvariables["f_" +str(i)+ "_"+str(j)+ "_"+ str(k)]
+                prob += s == 0
+    #con 6
+    for k in range(num_districts):
+        s=yvariables["y_"+str(centers[k]) + "_" + str(k)]
+        prob += s == 1
+
+    mip_file="sapmip.lp"
+    #prob.writeLP(mip_file)
     node_groups=[-1 for i in range(num_units)]
     sta=init_sol_model2(0) #int
-    if sta<0:
-        node_groups=[-1 for i in range(num_units)]
-        for k in range(num_districts):
-            node_groups[centersID[k]]=k
-        repare_partial_solution()
-    else:
-        repare_fragmented_solution()
+    repare_fragmented_solution()
     RRT_local_search()
     RRT_local_search()
 
+    #varialbles=yvariables.keys()
     mip_mst_file=tempfile.mkstemp()[1]+".mst"
     f = open(mip_mst_file,"w")
     f.write('<?xml version = "1.0" encoding="UTF-8" standalone="yes"?>\n')
     f.write('<CPLEXSolutions version="1.2">\n')
-
     f.write(' <CPLEXSolution version="1.2">\n')
     f.write('  <header\n')
     f.write('    problemName=""\n')
     f.write('    solutionName="m0"\n')
     f.write('    solutionIndex="0"/>\n')
     f.write('  <variables>\n')
-    idx=0
     for i in range(num_units):
-        for k in range(num_districts):
-            if node_groups[i]==k:
-                s='   <variable name="' + 'y_'+str(i)+ '_'+ str(k)+ '" index="'+str(idx) + '" value="1"/>\n'
-            else:
-                s='   <variable name="' + 'y_'+str(i)+ '_'+ str(k)+ '" index="'+str(idx) + '" value="0"/>\n'
-            f.write(s)
-            idx+=1
-##    for i in range(num_units):
-##        for k in range(num_districts):
-##            if centersID[k]==i:
-##                s='   <variable name="' + 'w_'+str(i)+ '_'+ str(k)+ '" index="'+str(idx) + '" value="1"/>\n'
-##            else:
-##                s='   <variable name="' + 'w_'+str(i)+ '_'+ str(k)+ '" index="'+str(idx) + '" value="0"/>\n'
-##            f.write(s)
-##            idx+=1
+        k=node_groups[i]
+        v='y_'+str(i)+ '_'+ str(k)
+        s='   <variable name="' + v +'" index="'+str(i+1) + '" value="1"/>\n'
+        f.write(s)
     f.write('  </variables>\n')
     f.write(' </CPLEXSolution>\n')
     f.write('</CPLEXSolutions>\n')
     f.flush()
     f.close()
+    cbc=pulp.solvers.COIN_CMD(mip=1,msg=0,maxSeconds=heuristic_time_limit,fracGap = 0.0000000000001, options=['vnd on', 'node hybrid', 'rens on','mips '+mip_mst_file])
+    if mip_solver=='cplex':
+        cbc=pulp.solvers.CPLEX_CMD(mip=1,msg=0,timelimit=heuristic_time_limit,options=['set mip tolerances mipgap 0.000000000001', 'read '+mip_mst_file])
+    cbc.setTmpDir() 
+    cbc.actualSolve(prob)
+    arcpy_print("solver status: " + pulp.LpStatus[prob.status])
+    if prob.status<=0:
+        return prob.status
 
-
-    alpha_coeff=avg_dis_min*pop_dis_coeff    
-    mip_file=tempfile.mkstemp()[1]+".lp"
-    f = open(mip_file,"w")
-    f.write("Minimize\nobj: ")
-    for k in range(num_districts):
-        f.write(str(alpha_coeff) + " H_" + str(k) + " + ")
-    objfunc=""
-    for i in range(num_units):
-        for k in range(num_districts):
-            #if i==centers[k]:  continue
-            objfunc+= str (nodes[i][3]*nodedij[i][centers[k]])
-            objfunc+= " y_" +str(i)+ "_"+ str(k) + " + "
-    f.write(objfunc[:-3])
-    f.write("\nsubject to\n")
-    #con 1
-    cidx=0
-    for i in range(num_units):
-        f.write("c"+str(cidx)+":")
-        cidx+=1
-        s=""
-        for k in range(num_districts):
-            s+=" y_" +str(i)+ "_"+ str(k) +" + "
-        f.write(s[:-3] + " = 1\n" )
-    #con 2
-    for k in range(num_districts):
-        s=" "
-        for i in range(num_units):
-            s+=  str(nodes[i][3]) + " y_" +str(i)+ "_"+ str(k) + " + "
-        f.write("c"+str(cidx)+":")
-        cidx+=1
-        f.write(s[:-3] + " - H_"+str(k) + " <= " + str(capacities[k])+"\n")
-
-    #con 3
-    for i in range(num_units):
-        for j in node_neighbors[i]:
-            for k in range(num_districts):
-                f.write("c"+str(cidx)+":")
-                cidx+=1
-                s=" f_" +str(i)+ "_"+str(j)+ "_"+ str(k) +" - "
-                s+= str(num_units-num_districts) + " y_" +str(i)+ "_"+ str(k)
-                f.write(s + " <= 0\n")
-    #con 4
-    for i in range(num_units):
-        for j in node_neighbors[i]:
-            for k in range(num_districts):
-                f.write("c"+str(cidx)+":")
-                cidx+=1
-                s=" f_" +str(i)+ "_"+str(j)+ "_"+ str(k) +" - "
-                s+= str(num_units-num_districts) + " y_" +str(j)+ "_"+ str(k)
-                f.write(s + " <= 0\n")
-    #con 5
-    for i in range(num_units):
-        if i in centersID: continue
-        for k in range(num_districts):
-            f.write("c"+str(cidx)+":")
-            cidx+=1
-            s=""
-            for j in node_neighbors[i]:
-                s+=" f_" +str(i)+ "_"+str(j)+ "_"+ str(k) +" - " +" f_" +str(j)+ "_"+str(i)+ "_"+ str(k) + " + "
-            f.write(s[:-2] + " - y_" +str(i)+ "_"+ str(k) + " >= 0\n")
-
-            #f.write("c"+str(cidx)+":")
-            #cidx+=1
-            #f.write(s[:-2] + " <= 1\n")
-
-##    #con 6
-##    for i in range(num_districts):
-##        i1=centersID[i]
-##        for k in range(num_districts):
-##            f.write("c"+str(cidx)+":")
-##            cidx+=1
-##            s=""
-##            for j in node_neighbors[i1]:
-##                s+=" f_" +str(i1)+ "_"+str(j)+ "_"+ str(k) +" - " +" f_" +str(j)+ "_"+str(i1)+ "_"+ str(k) + " + "
-##            f.write(s[:-2] + " >= " + str(num_districts-num_units) + "\n")
-
-    #con 6
-    for i in centersID:
-        for j in node_neighbors[i]:
-            for k in range(num_districts):
-                f.write("c"+str(cidx)+":")
-                cidx+=1
-                s=" f_" +str(i)+ "_"+str(j)+ "_"+ str(k) +" = 0 \n"
-                f.write(s)
-
-    for k in range(num_districts):
-        f.write("c"+str(cidx)+":")
-        cidx+=1
-        f.write(" y_"+str(centers[k]) + "_" + str(k) + " = 1\n")
-
-##    for k in range(num_districts):
-##        f.write("c"+str(cidx)+":")
-##        cidx+=1
-##        f.write(" H_"+ str(k) + " = 0\n")
-
-
-##    ulist=non_near_list(100)
-##    for x in ulist:
-##        if node_groups[x[0]] == x[1]: continue
-##        f.write("c"+str(cidx)+":")
-##        cidx+=1
-##        f.write(" y_"+str(x[0]) + "_" + str(x[1]) + " = 0\n")
-
-    f.write("Binaries\n")
-    for i in range(num_units):
-        for k in range(num_districts):
-            f.write(" y_" +str(i)+ "_"+ str(k)+"\n")
-##    for i in range(num_units):
-##        for k in range(num_districts):
-##            f.write(" w_" +str(i)+ "_"+ str(k)+"\n")
-          
-    f.write("Generals\n")
-    for k in range(num_districts):
-        #f.write(" H_" + str(k) + "\n" + " L_"+ str(k) + "\n")
-        f.write(" H_" + str(k) + "\n")
-    for i in range(num_units):
-        for j in node_neighbors[i]:
-            for k in range(num_districts):
-                f.write(" f_" +str(i)+ "_"+str(j)+ "_"+ str(k)+"\n")
-    f.write("End\n")
-    f.flush()
-    f.close()
-
-    tstart=time.time()
-    c = cplex.Cplex()
-    c.parameters.mip.tolerances.mipgap.set(solver_mipgap)
-    c.parameters.timelimit.set(solver_time_limit)
-    #c.parameters.threads.set(4)
-    c.parameters.parallel.set(-1)
-    c.parameters.mip.display.set(2)
-    c.read(mip_file)
-    c.MIP_starts.read(mip_mst_file)
-    c.solve()
-    #if os.path.isfile(mip_file): os.remove(mip_file)
-    #if os.path.isfile(mip_mst_file): os.remove(mip_mst_file)
-
-    #c.populate_solution_pool()
-    #c.populate_solution_pool()
-    ##noprint "cplex status and obj:",c.solution.get_status_string(),c.solution.get_objective_value()
-    snames = c.solution.pool.get_names()
-    for sln in range(1):
-        sol=[[0,0,-1] for x in range(num_units)]
-        for i in range(num_units):
-            sol[i][0]=nodes[i][0]
-            for k in range(num_districts):
-                var="y_" +str(i)+ "_"+ str(k)
-                #yik=c.solution.get_values(var)
-                yik=c.solution.pool.get_values(sln, var)
-                if yik>0.9:
-                    node_groups[i]=k
-                #var="w_" +str(i)+ "_"+ str(k)
-                #wik=c.solution.get_values(var)
-                #if wik>0.9:
-                #    centersID[k]=i
+    node_groups=[-1 for x in range(num_units)]
+    for v in prob.variables():
+        if (v.varValue >= 0.90):
+            items=v.name.split('_')
+            i=int(items[1])
+            if items[0]=='y':
+                k=int(items[2])
+                node_groups[i]=k
+    district_info = [[0,0.0,0,0,0] for x in range(num_districts)]
     update_district_info()
     update_best_solution()
-    ##noprint "model solution",biobjective,objective,objective_overload,time.time()-tstart
-    
+    return prob.status
+
+
 #set solver parameters
 #solver: "hc", "vnd","sa", "oba", "ils", "ga", "mip","vns","hyb"
 #start: number of multistarts
@@ -1713,7 +1457,7 @@ def solve():
             update_region_pool_all()
             solutions.append([biobjective,centersID[:],node_groups[:],multi_start])
             acceptanceRule=rule
-            arcpy.AddMessage("initial solution: "+str(biobjective))
+            arcpy_print("initial solution: "+str(biobjective))
             #population.append([biobjective,centersID[:],node_groups[:]]) 
             ##noprint "initial solution ", multi_start,":",int(biobjective),int(objective), int(objective_overload)
         solutions.sort(key=lambda x:x[0])
@@ -1724,11 +1468,14 @@ def solve():
     not_improve_best=0
     adj_pop_loops=spp_loops
     if acceptanceRule=="mip":
-        initial_solution(0)
-        repare_fragmented_solution()
-        update_district_info()
-        RRT_local_search()
-        mipmodel()
+#        initial_solution(0)
+#        repare_fragmented_solution()
+#        update_district_info()
+#        RRT_local_search()
+        #mipmodel()
+        sta=mipmodel_pulp()
+        if sta<0:
+            return "model unsilved!"
         update_district_info()
         update_best_solution()
         RRT_local_search()
@@ -1776,7 +1523,7 @@ def solve():
             solutions.sort(key=lambda x:x[0])
             solutions=selection(solutions)
             if time.time()-t_h > heuristic_time_limit: break
-            arcpy.AddMessage(acceptanceRule +" loop "+str(loop) + " obj: " +str(best_biobjective_global))
+            arcpy_print(acceptanceRule +" loop "+str(loop) + " obj: " +str(best_biobjective_global))
     if acceptanceRule=="ilsvnd" or acceptanceRule=="ils":
         #for loop in range(SA_maxloops):
         tabuSearch=0
@@ -1840,7 +1587,7 @@ def solve():
             ##noprint acceptanceRule,loop,idx,"bestg",int(best_biobjective_global*100)/100.0,int(best_overload_global),
             ##noprint "current", int(biobjective*100)/100.0,int(objective_overload),move_count, int(t2*100)/100.0, not_improve_best
             if time.time()-t_h > heuristic_time_limit: break
-            arcpy.AddMessage(acceptanceRule +" loop "+str(loop) + " obj: " +str(best_biobjective_global))
+            arcpy_print(acceptanceRule +" loop "+str(loop) + " obj: " +str(best_biobjective_global))
     if acceptanceRule=="hc" or acceptanceRule=="vnd" or acceptanceRule=="sls" or acceptanceRule=="rrt":
         best_biobjective_global = MAXNUMBER
         not_improve_best=0
@@ -1872,7 +1619,7 @@ def solve():
                 ##noprint acceptanceRule,idx,"bestg",int(best_biobjective_global*100)/100.0,int(best_overload_global),
                 ###noprint "cbest", int(best_biobjective),int(best_objective),int(best_objective_overload),
                 ##noprint "current", int(biobjective*100)/100.0,int(objective_overload),move_count
-                arcpy.AddMessage(acceptanceRule +" start "+str(idx) + " obj:" +str(best_biobjective_global))
+                arcpy_print(acceptanceRule +" start "+str(idx) + " obj:" +str(best_biobjective_global))
                 if time.time()-t_h >heuristic_time_limit: break
                 continue
             if acceptanceRule=="hc":
@@ -1888,7 +1635,7 @@ def solve():
                     ##noprint "cbest", int(best_biobjective),int(best_objective),int(best_objective_overload),
                     ##noprint "current", int(biobjective),int(objective),int(objective_overload),move_count
                     if abs(last_loop_obj-biobjective)<0.00000001: break
-                    arcpy.AddMessage(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
+                    arcpy_print(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
                 if time.time()-t_h >heuristic_time_limit: break
                 continue
             if acceptanceRule=="sls" or acceptanceRule=="rrt":
@@ -1932,7 +1679,7 @@ def solve():
                     #if acceptanceRule=="sls":
                     #    ##noprint int(sls_move_possibility*10000)
                     #else: ##noprint deviation
-                    arcpy.AddMessage(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
+                    arcpy_print(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
                     if best_biobjective < last_best: not_improved=0
                     else: not_improved+=1
                     if not_improved>10: break
@@ -1971,7 +1718,7 @@ def solve():
                 ##noprint acceptanceRule,idx,loop,"T=", int(SA_temperature*1000),"bestg",int(best_biobjective_global),int(best_objective_global),int(best_overload_global),
                 ##noprint "cbest", int(best_biobjective),int(best_objective),int(best_objective_overload),
                 ##noprint "current", int(biobjective),int(objective),int(objective_overload),move_count,int((time.time()-t_h)*1000)/1000.0
-                arcpy.AddMessage(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
+                arcpy_print(acceptanceRule +" start "+str(idx) +" loop " +str(loop)+ " obj: " +str(best_biobjective_global))
             if time.time()-t_h > heuristic_time_limit: break
                 #if move_count==0: break
             #solutions[idx][0]=best_biobjective
@@ -2084,13 +1831,15 @@ def sppmodel():
     else:
         mip_mst_file=tempfile.mkstemp()[1]+".txt"
         mips_start(mip_mst_file)
+        mip_mst_file=mip_mst_file.split("\\")[-1]    
     cbc=pulp.solvers.COIN_CMD(maxSeconds=100,mip=1,msg=0,fracGap=0.00001,options=['vnd on', 'node hybrid', 'rens on','mips '+mip_mst_file])
     #if num_units>1000: cbc=pulp.solvers.COIN_CMD(maxSeconds=100,mip=1,msg=1,options=['vnd on', 'node hybrid', 'rens on'])
     ###noprint "Solving spp model..."
     if mip_solver=='cplex':
         cbc=pulp.solvers.CPLEX_CMD(msg=0,timelimit=100,options=['set threads 6','set mip tolerances mipgap 0.0000001', 'read '+mip_mst_file])
+    cbc.setTmpDir() 
     cbc.actualSolve(prob)
-    if prob.status<0:
+    if prob.status<=0:
        return prob.status #failer
     node_groups=[-1 for x in range(num_units)]
     for v in prob.variables():
@@ -2166,14 +1915,15 @@ def init_sol_model(rand):
     cbc=pulp.solvers.COIN_CMD(mip=1,msg=0,maxSeconds=10,fracGap = 0.01)
     #prob.solve(solver=cbc)
     if mip_solver=="cplex":
-        cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.003'])
+        cbc=pulp.solvers.CPLEX_CMD(mip=1,msg=0,timelimit=10, options=['set mip tolerances mipgap 0.003'])
         if rand==0:
-            cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.001'])
+            cbc=pulp.solvers.CPLEX_CMD(mip=1,msg=0,timelimit=heuristic_time_limit, options=['set mip tolerances mipgap 0.0000000000001'])
+    cbc.setTmpDir() 
     cbc.actualSolve(prob)
-
-    if prob.status<0:
+    arcpy_print("solver status: " + pulp.LpStatus[prob.status])
+    if prob.status<=0:
         ##noprint "model unsolved..."
-        return -1
+        return prob.status
     sol=[]
     t=[]
     for v in prob.variables():
@@ -2190,7 +1940,7 @@ def init_sol_model(rand):
     for i in range(len(sol)):
         node_groups[sol[i][0]]=sol[i][1]
     update_district_info()
-    return pulp.value(prob.objective)
+    return prob.status
 
 
 def init_sol_model2(rand):
@@ -2233,12 +1983,13 @@ def init_sol_model2(rand):
         #s-=tvariables["t_" +str(k)]
         prob+=s <= capacities[k]
     #prob.writeLP("_tp2.lp")
-    cbc=pulp.solvers.COIN_CMD(mip=1,msg=0,maxSeconds=10,fracGap = 0.001)
+    cbc=pulp.solvers.COIN_CMD(mip=1,msg=01,fracGap = 0.005)
     if mip_solver=="cplex":
-        cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.000000001'])
+        cbc=pulp.solvers.CPLEX_CMD(options=['set mip tolerances mipgap 0.001'])
+    cbc.setTmpDir() 
     cbc.actualSolve(prob)
 
-    if prob.status<0:
+    if prob.status<=0:
         ##noprint "model unsolved..."
         return -1
     sol=[[-1,-1] for x in range(num_units)]
@@ -2426,7 +2177,7 @@ def initial_solution(idx):
         repare_partial_solution()
     if initial_solution_method[method] ==1:
         ###noprint idx, "1binmodel",
-        init_sol_model(1)
+        init_sol_model2(1)
         if spatial_contiguity==1: repare_fragmented_solution()
     if initial_solution_method[method] ==0:
         ###noprint idx,"0intmodel",
@@ -2522,7 +2273,7 @@ def ga(numf,m,timelimit,mthd,crate, mrate,spp,myseed):
         opt=(biobjective-lp_obj)/lp_obj #compare with lower bound (no contiguity, no unit integrity)
         if opt<optimum: optimum=opt
         ##noprint "initial solution",biobjective,objective, objective_overload,int((time.time()-t2)*100)/100.0, int(opt*10000)/10000.0
-        arcpy.AddMessage("initial solution "+str(multi_start) +": " +str( biobjective))
+        arcpy_print("initial solution "+str(multi_start) +": " +str( biobjective))
         if len(population)>= multi_start_count:
             break
     population.sort(key=lambda x:x[0])
@@ -2681,7 +2432,7 @@ def ga(numf,m,timelimit,mthd,crate, mrate,spp,myseed):
         while len(population)>multi_start_count*2:
             population.pop()
         ##noprint not_improved,int((time.time()-t_ga)*100)/100.0
-        arcpy.AddMessage("loop "+str(loop) +": " +str( best_biobjective_global))
+        arcpy_print("loop "+str(loop) +": " +str( best_biobjective_global))
 
     population.sort(key=lambda x:x[0])
     node_groups=best_solution_global[:] #population[0][2][:]
