@@ -13,7 +13,7 @@ Install the software:
 3. Copy all the files to a file directory. 
 4. In ArcGIS, nevigate to the file directory, click the tool. 
 # ArcGIS tool and result
-![AcrGIS tool for SAP](https://github.com/yfkong/SAPARCGIS/blob/master/sap.png)
-![Service areas](https://github.com/yfkong/saparcgis/blob/sap_result.png)
+![AcrGIS tool for SAP](https://raw.githubusercontent.com/yfkong/SAPARCGIS/master/sap.png)
+![Service areas](https://raw.githubusercontent.com/yfkong/SAPARCGIS/master/sap_result.png)
 # E-mail: yfkong@henu.edu.cn
 # Sponsored by the National Science Foundation of China (no. 41871307)
