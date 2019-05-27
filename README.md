@@ -12,5 +12,6 @@ Install the software:
 2. ILOG CPLEX 12.x and CPLEX Python API (optional).
 3. Copy all the files to a file directory. 
 4. In ArcGIS, nevigate to the file directory, click the tool. 
+![AcrGIS tool for SAP](https://github.com/yfkong/saparcgis/sap.png)
 # E-mail: yfkong@henu.edu.cn
 # Sponsored by the National Science Foundation of China (no. 41871307)
