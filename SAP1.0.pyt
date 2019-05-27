@@ -20,11 +20,11 @@ class Tool(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         feas=arcpy.Parameter(name='feas', displayName='Map layer', datatype='GPFeatureLayer', direction='Input',parameterType='Required')
-        fld_id=arcpy.Parameter(name='id_fld', displayName='ID filed', datatype='Field', direction='Input', parameterType='Required')
+        fld_id=arcpy.Parameter(name='id_fld', displayName='ID field', datatype='Field', direction='Input', parameterType='Required')
         fld_id.parameterDependencies = [feas.name]
-        fld_demand=arcpy.Parameter(name='demand_fld', displayName='Demand filed', datatype='Field', direction='Input', parameterType='Required')
+        fld_demand=arcpy.Parameter(name='demand_fld', displayName='Demand field', datatype='Field', direction='Input', parameterType='Required')
         fld_demand.parameterDependencies = [feas.name]
-        fld_supply=arcpy.Parameter(name='supply_fld', displayName='Supply filed', datatype='Field', direction='Input', parameterType='Required')
+        fld_supply=arcpy.Parameter(name='supply_fld', displayName='Supply field', datatype='Field', direction='Input', parameterType='Required')
         fld_supply.parameterDependencies = [feas.name]
         connectivity=arcpy.Parameter(name='connectivity', displayName='connectivity?', datatype='GPBoolean',direction='Input',parameterType='Optional')
         connectivity.value=True
