@@ -5,6 +5,7 @@ The design of service areas is one of the essential issues in providing efficien
 We have designed the tool in ArcGIS for delineating service areas. Various algorithms are surpported:
 1. Local-search based metaheuristics such as ILS, VNS, SA, RRT, SLS, VND, HC;
 2. Population based metaheuristics GA;
+3. Mixed integer programming
 
 # How to use the tool
 Install the software:
@@ -16,4 +17,4 @@ Install the software:
 ![AcrGIS tool for SAP](https://raw.githubusercontent.com/yfkong/SAPARCGIS/master/sap.png)
 ![Service areas](https://raw.githubusercontent.com/yfkong/SAPARCGIS/master/sap_result.png)
 # E-mail: yfkong@henu.edu.cn
-# Sponsored by the National Science Foundation of China (no. 41871307)
+# Sponsored by the National Natural Science Foundation of China (no. 41871307)
